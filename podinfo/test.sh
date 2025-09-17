@@ -1,0 +1,1 @@
+ curl -X POST -d '{"hello":"world"}' http://localhost:9898/echo

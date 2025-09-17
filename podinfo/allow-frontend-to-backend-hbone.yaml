@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-backend-hbone
+  namespace: podinfo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: backend-podinfo
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: frontend-podinfo
+    ports:
+    - protocol: TCP
+      port: 15008
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-egress-hbone
+  namespace: podinfo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: frontend-podinfo
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: backend-podinfo
+    ports:
+    - protocol: TCP
+      port: 15008
