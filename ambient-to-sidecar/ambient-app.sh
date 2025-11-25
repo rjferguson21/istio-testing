@@ -16,7 +16,7 @@ kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -
 echo "Enrolling namespace in ambient mesh..."
 kubectl label namespace ${NAMESPACE} istio.io/dataplane-mode=ambient --overwrite
 
-# Deploy application
+# Deploy application and network policies
 echo "Deploying ambient application..."
 kubectl apply -n ${NAMESPACE} -f - <<EOF
 apiVersion: v1
@@ -75,6 +75,61 @@ spec:
           limits:
             memory: "64Mi"
             cpu: "200m"
+---
+# Default deny all traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+# Allow egress to sidecar-app namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-to-sidecar-app
+spec:
+  podSelector:
+    matchLabels:
+      app: ambient-app
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: sidecar-app
+    ports:
+    - protocol: TCP
+      port: 15008
+---
+# Allow egress to istio-system for ambient mesh
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-istio-system-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: ambient-app
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: istio-system
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
 EOF
 
 # Wait for deployment to be ready
