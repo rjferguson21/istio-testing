@@ -21,3 +21,4 @@ kubectl label namespace istio-ingress istio.io/dataplane-mode=ambient
 
 helm install istio-ingress istio/gateway -n istio-ingress --wait
 
+kubectl apply -f tele.yaml

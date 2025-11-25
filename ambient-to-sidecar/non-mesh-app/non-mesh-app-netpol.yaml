@@ -1,0 +1,21 @@
+# Non-mesh app specific network policy
+# Allows egress to ambient-app-receive namespace on port 8080 (direct, no HBONE)
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-to-ambient-app-receive
+spec:
+  podSelector:
+    matchLabels:
+      app: non-mesh-app
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ambient-app-receive
+    ports:
+    - protocol: TCP
+      port: 8080  # Direct application port (no mesh involved)

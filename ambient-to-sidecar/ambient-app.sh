@@ -7,6 +7,8 @@ echo "Deploying ambient mesh application..."
 NAMESPACE="ambient-app"
 TARGET_NAMESPACE="sidecar-app"
 TARGET_SERVICE="sidecar-service"
+TARGET_NAMESPACE_2="ambient-app-receive"
+TARGET_SERVICE_2="ambient-service-receive"
 
 # Create namespace
 echo "Creating namespace: ${NAMESPACE}..."
@@ -19,11 +21,6 @@ kubectl label namespace ${NAMESPACE} istio.io/dataplane-mode=ambient --overwrite
 # Deploy application and network policies
 echo "Deploying ambient application..."
 kubectl apply -n ${NAMESPACE} -f - <<EOF
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: ambient-app
----
 apiVersion: v1
 kind: Service
 metadata:
@@ -51,7 +48,6 @@ spec:
       labels:
         app: ambient-app
     spec:
-      serviceAccountName: ambient-app
       containers:
       - name: ambient-app
         image: curlimages/curl:latest
@@ -66,6 +62,14 @@ spec:
             else
               echo "✗ Failed to connect to sidecar app"
             fi
+
+            echo "\$(date): Polling ambient-app-receive..."
+            if curl -s -o /dev/null -w "%{http_code}" http://${TARGET_SERVICE_2}.${TARGET_NAMESPACE_2}.svc.cluster.local:8080 | grep -q "200"; then
+              echo "✓ Successfully connected to ambient-app-receive"
+            else
+              echo "✗ Failed to connect to ambient-app-receive"
+            fi
+
             sleep 5
           done
         resources:
@@ -75,62 +79,15 @@ spec:
           limits:
             memory: "64Mi"
             cpu: "200m"
----
-# Default deny all traffic
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny-all
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-  - Egress
----
-# Allow egress to sidecar-app namespace
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-to-sidecar-app
-spec:
-  podSelector:
-    matchLabels:
-      app: ambient-app
-  policyTypes:
-  - Egress
-  egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: sidecar-app
-    ports:
-    - protocol: TCP
-      port: 15008
----
-# Allow egress to istio-system for ambient mesh
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-istio-system-egress
-spec:
-  podSelector:
-    matchLabels:
-      app: ambient-app
-  policyTypes:
-  - Egress
-  egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: istio-system
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: kube-system
-    ports:
-    - protocol: UDP
-      port: 53
 EOF
+
+# Apply common network policies
+echo "Applying common network policies..."
+kubectl apply -n ${NAMESPACE} -f common/common-netpol.yaml
+
+# Apply ambient-app specific network policies
+echo "Applying ambient-app specific network policies..."
+kubectl apply -n ${NAMESPACE} -f ambient-app/ambient-app-netpol.yaml
 
 # Wait for deployment to be ready
 echo "Waiting for deployment to be ready..."
@@ -140,7 +97,9 @@ echo ""
 echo "✓ Ambient application deployed successfully!"
 echo ""
 echo "Namespace: ${NAMESPACE}"
-echo "Target: ${TARGET_SERVICE}.${TARGET_NAMESPACE}.svc.cluster.local:8080"
+echo "Targets:"
+echo "  - ${TARGET_SERVICE}.${TARGET_NAMESPACE}.svc.cluster.local:8080"
+echo "  - ${TARGET_SERVICE_2}.${TARGET_NAMESPACE_2}.svc.cluster.local:8080"
 echo ""
 echo "To view logs:"
 echo "  kubectl logs -f deployment/ambient-app -n ${NAMESPACE}"

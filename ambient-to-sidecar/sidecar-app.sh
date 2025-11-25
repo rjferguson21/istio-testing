@@ -18,11 +18,6 @@ kubectl label namespace ${NAMESPACE} istio-injection=enabled --overwrite
 echo "Deploying sidecar application..."
 kubectl apply -n ${NAMESPACE} -f - <<EOF
 apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: sidecar-app
----
-apiVersion: v1
 kind: Service
 metadata:
   name: sidecar-service
@@ -49,7 +44,6 @@ spec:
       labels:
         app: sidecar-app
     spec:
-      serviceAccountName: sidecar-app
       containers:
       - name: sidecar-app
         image: hashicorp/http-echo:latest
@@ -66,62 +60,15 @@ spec:
           limits:
             memory: "64Mi"
             cpu: "200m"
----
-# Default deny all traffic
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny-all
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-  - Egress
----
-# Allow ingress from ambient-app namespace to sidecar-app
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-from-ambient-app
-spec:
-  podSelector:
-    matchLabels:
-      app: sidecar-app
-  policyTypes:
-  - Ingress
-  ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: ambient-app
-    ports:
-    - protocol: TCP
-      port: 15008
----
-# Allow sidecar egress to istio system (for control plane communication)
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-istio-system-egress
-spec:
-  podSelector:
-    matchLabels:
-      app: sidecar-app
-  policyTypes:
-  - Egress
-  egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: istio-system
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: kube-system
-    ports:
-    - protocol: UDP
-      port: 53
 EOF
+
+# Apply common network policies
+echo "Applying common network policies..."
+kubectl apply -n ${NAMESPACE} -f common/common-netpol.yaml
+
+# Apply sidecar-app specific network policies
+echo "Applying sidecar-app specific network policies..."
+kubectl apply -n ${NAMESPACE} -f sidecar-app/sidecar-app-netpol.yaml
 
 # Wait for deployment to be ready
 echo "Waiting for deployment to be ready..."
