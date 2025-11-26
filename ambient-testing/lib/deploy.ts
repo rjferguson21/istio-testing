@@ -22,18 +22,20 @@ export async function deployReceiverApp(config: ReceiverAppConfig) {
   // Create Common NetworkPolicies (default deny + istio-system/DNS egress)
   await createCommonNetworkPolicies(name);
 
-  // Create ingress NetworkPolicies based on source mode
+  // Create ingress NetworkPolicies based on source and target modes
   for (const source of ingressSources) {
-    if (source.istioMode === "ambient") {
-      // Ambient sources use HBONE (port 15008)
-      await createIngressHBONEPolicy(
+    // Determine the correct ingress policy based on source and target modes
+    if (source.istioMode === "none" || istioMode === "none") {
+      // Non-mesh source OR non-mesh target: use basic port 8080
+      await createBasicIngressPolicy(
         name,
         name,
         source.namespace,
+        8080,
         `allow-from-${source.namespace}`
       );
-    } else if (source.istioMode === "sidecar") {
-      // Sidecar sources use direct port 8080
+    } else if (source.istioMode === "sidecar" && istioMode === "sidecar") {
+      // Sidecar-to-sidecar: use direct port 8080
       await createBasicIngressPolicy(
         name,
         name,
@@ -42,12 +44,11 @@ export async function deployReceiverApp(config: ReceiverAppConfig) {
         `allow-from-${source.namespace}`
       );
     } else {
-      // Non-mesh sources use direct port 8080
-      await createBasicIngressPolicy(
+      // Any other mesh combination (ambient involved): use HBONE
+      await createIngressHBONEPolicy(
         name,
         name,
         source.namespace,
-        8080,
         `allow-from-${source.namespace}`
       );
     }
