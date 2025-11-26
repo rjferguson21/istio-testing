@@ -21,4 +21,14 @@ kubectl label namespace istio-ingress istio.io/dataplane-mode=ambient
 
 helm install istio-ingress istio/gateway -n istio-ingress --wait
 
-kubectl apply -f tele.yaml
+kubectl apply -f - <<EOF
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: mesh-default
+  namespace: istio-system
+spec:
+  accessLogging:
+    - providers:
+      - name: envoy
+EOF

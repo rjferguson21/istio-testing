@@ -1,0 +1,17 @@
+{
+  "name": "ambient-testing",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "setup": "npm run cluster && npm run deploy && npm run monitor", 
+    "cluster": "../cluster.sh",
+    "deploy": "node --experimental-strip-types index.ts",
+    "monitor": "watch -n 1 -c ./monitorts.sh"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "kubernetes-fluent-client": "^3.10.8"
+  }
+}
