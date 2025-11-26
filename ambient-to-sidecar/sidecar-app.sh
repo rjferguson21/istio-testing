@@ -2,9 +2,11 @@
 
 set -e
 
-echo "Deploying sidecar-enabled application..."
+echo "Deploying sidecar-enabled client application..."
 
 NAMESPACE="sidecar-app"
+TARGET_NAMESPACE="ambient-app-receive"
+TARGET_SERVICE="ambient-service-receive"
 
 # Create namespace
 echo "Creating namespace: ${NAMESPACE}..."
@@ -15,7 +17,7 @@ echo "Enabling sidecar injection for namespace..."
 kubectl label namespace ${NAMESPACE} istio-injection=enabled --overwrite
 
 # Deploy application and network policies
-echo "Deploying sidecar application..."
+echo "Deploying sidecar client application..."
 kubectl apply -n ${NAMESPACE} -f - <<EOF
 apiVersion: v1
 kind: Service
@@ -46,13 +48,20 @@ spec:
     spec:
       containers:
       - name: sidecar-app
-        image: hashicorp/http-echo:latest
+        image: curlimages/curl:latest
+        command: ["/bin/sh"]
         args:
-        - -text=Hello from sidecar app!
-        - -listen=:8080
-        ports:
-        - containerPort: 8080
-          name: http
+        - -c
+        - |
+          while true; do
+            echo "\$(date): Polling ambient-app-receive (sidecar via HBONE)..."
+            if curl -s -o /dev/null -w "%{http_code}" http://${TARGET_SERVICE}.${TARGET_NAMESPACE}.svc.cluster.local:8080 | grep -q "200"; then
+              echo "✓ Successfully connected to ambient-app-receive"
+            else
+              echo "✗ Failed to connect to ambient-app-receive"
+            fi
+            sleep 5
+          done
         resources:
           requests:
             memory: "32Mi"
@@ -85,13 +94,10 @@ else
 fi
 
 echo ""
-echo "✓ Sidecar application deployed successfully!"
+echo "✓ Sidecar client application deployed successfully!"
 echo ""
-echo "Namespace: ${NAMESPACE}"
-echo "Service: sidecar-service.${NAMESPACE}.svc.cluster.local:8080"
+echo "Namespace: ${NAMESPACE} (Sidecar injection enabled)"
+echo "Target: ${TARGET_SERVICE}.${TARGET_NAMESPACE}.svc.cluster.local:8080"
 echo ""
-echo "To view pods:"
-echo "  kubectl get pods -n ${NAMESPACE}"
-echo ""
-echo "To test the service:"
-echo "  kubectl run test-pod --rm -i --tty --image=curlimages/curl -- curl http://sidecar-service.${NAMESPACE}.svc.cluster.local:8080"
+echo "To view logs:"
+echo "  kubectl logs -f deployment/sidecar-app -n ${NAMESPACE}"

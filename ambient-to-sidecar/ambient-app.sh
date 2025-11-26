@@ -5,8 +5,8 @@ set -e
 echo "Deploying ambient mesh application..."
 
 NAMESPACE="ambient-app"
-TARGET_NAMESPACE="sidecar-app"
-TARGET_SERVICE="sidecar-service"
+TARGET_NAMESPACE="sidecar-app-receive"
+TARGET_SERVICE="sidecar-service-receive"
 TARGET_NAMESPACE_2="ambient-app-receive"
 TARGET_SERVICE_2="ambient-service-receive"
 
@@ -56,11 +56,11 @@ spec:
         - -c
         - |
           while true; do
-            echo "\$(date): Polling sidecar app..."
+            echo "\$(date): Polling sidecar-app-receive..."
             if curl -s -o /dev/null -w "%{http_code}" http://${TARGET_SERVICE}.${TARGET_NAMESPACE}.svc.cluster.local:8080 | grep -q "200"; then
-              echo "✓ Successfully connected to sidecar app"
+              echo "✓ Successfully connected to sidecar-app-receive"
             else
-              echo "✗ Failed to connect to sidecar app"
+              echo "✗ Failed to connect to sidecar-app-receive"
             fi
 
             echo "\$(date): Polling ambient-app-receive..."
