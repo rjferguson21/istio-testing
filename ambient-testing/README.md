@@ -8,6 +8,12 @@ This project demonstrates network connectivity patterns between different Istio 
 npm run setup
 ```
 
+### Monitoring Output
+
+![Monitor Output](monitor.jpg)
+
+The monitor script shows real-time connectivity status between all applications.
+
 ## Application Architecture
 
 ### Receiver Applications
