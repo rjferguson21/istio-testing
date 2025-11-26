@@ -1,6 +1,6 @@
 # Istio Ambient Mesh Testing
 
-This project demonstrates network connectivity patterns between different Istio mesh modes (Ambient, Sidecar, and Non-mesh) with network policies.
+This project demonstrates network connectivity patterns between different Istio mesh modes (Ambient, Sidecar, and Non-mesh) with network policies. All Kubernetes resources are deployed programmatically using [kubernetes-fluent-client](https://github.com/defenseunicorns/kubernetes-fluent-client).
 
 ## Running the Application
 
