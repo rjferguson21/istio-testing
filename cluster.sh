@@ -1,6 +1,6 @@
 #!/bin/bash
 
-k3d cluster delete -a
+k3d cluster delete istio-cluster
 
 # Create a new k3d cluster but disable traefik since it conflicts with istio
 k3d cluster create istio-cluster --api-port 6550 -p '9080:80@loadbalancer' -p '9443:443@loadbalancer' --agents 2 --k3s-arg '--disable=traefik@server:*'
